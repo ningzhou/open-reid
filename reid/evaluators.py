@@ -6,6 +6,7 @@ import torch
 
 from .evaluation_metrics import cmc, mean_ap
 from .feature_extraction import extract_cnn_feature
+from .feature_extraction import read_feature_from_disk
 from .utils.meters import AverageMeter
 
 
@@ -31,6 +32,34 @@ def extract_features(model, data_loader, print_freq=1, metric=None):
 
         if (i + 1) % print_freq == 0:
             print('Extract Features: [{}/{}]\t'
+                  'Time {:.3f} ({:.3f})\t'
+                  'Data {:.3f} ({:.3f})\t'
+                  .format(i + 1, len(data_loader),
+                          batch_time.val, batch_time.avg,
+                          data_time.val, data_time.avg))
+
+    return features, labels
+
+def read_features(feature_dir, data_loader, print_freq=1, metric=None):
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+
+    features = OrderedDict()
+    labels = OrderedDict()
+
+    end = time.time()
+    for i, (imgs, fnames, pids, _) in enumerate(data_loader):
+        # Read features from disk for current batch
+        feats = read_feature_from_disk(feature_dir, fnames)
+        for fname, feat, pid in zip(fnames, feats, pids):
+            features[fname] = feat
+            labels[fname] = pid
+
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if (i + 1) % print_freq == 0:
+            print('Read Features: [{}/{}]\t'
                   'Time {:.3f} ({:.3f})\t'
                   'Data {:.3f} ({:.3f})\t'
                   .format(i + 1, len(data_loader),
@@ -92,7 +121,9 @@ def evaluate_all(distmat, query=None, gallery=None,
                        first_match_break=False),
         'market1501': dict(separate_camera_set=False,
                            single_gallery_shot=False,
-                           first_match_break=True)}
+                           first_match_break=True),
+        'Allo'
+    }
     cmc_scores = {name: cmc(distmat, query_ids, gallery_ids,
                             query_cams, gallery_cams, **params)
                   for name, params in cmc_configs.items()}
@@ -118,3 +149,15 @@ class Evaluator(object):
         features, _ = extract_features(self.model, data_loader)
         distmat = pairwise_distance(features, query, gallery, metric=metric)
         return evaluate_all(distmat, query=query, gallery=gallery)
+
+
+class FeatureEvaluate(object):
+    def __init__(self, feature_dir):
+        super(FeatureEvaluate, self).__init__()
+        self.feature_dir = feature_dir
+
+    def evaluate(self, data_loader, query, gallery, metric=None):
+        features, _ = read_features(self.feature_dir, data_loader)
+        distmat = pairwise_distance(features, query, gallery, metric=metric)
+        return evaluate_all(distmat, query=query, gallery=gallery)
+
