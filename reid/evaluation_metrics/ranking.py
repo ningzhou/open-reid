@@ -19,7 +19,8 @@ def cmc(distmat, query_ids=None, gallery_ids=None,
         query_cams=None, gallery_cams=None, topk=100,
         separate_camera_set=False,
         single_gallery_shot=False,
-        first_match_break=False):
+        first_match_break=False,
+        only_exclude_self=False):
     distmat = to_numpy(distmat)
     m, n = distmat.shape
     # Fill up default values
@@ -44,8 +45,11 @@ def cmc(distmat, query_ids=None, gallery_ids=None,
     num_valid_queries = 0
     for i in range(m):
         # Filter out the same id and same camera
-        valid = ((gallery_ids[indices[i]] != query_ids[i]) |
-                 (gallery_cams[indices[i]] != query_cams[i]))
+        if only_exclude_self:
+            valid = (indices[i] != i)
+        else:
+            valid = ((gallery_ids[indices[i]] != query_ids[i]) |
+                     (gallery_cams[indices[i]] != query_cams[i]))
         if separate_camera_set:
             # Filter out samples from same camera
             valid &= (gallery_cams[indices[i]] != query_cams[i])
