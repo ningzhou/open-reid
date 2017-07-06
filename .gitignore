@@ -226,4 +226,5 @@ ENV/
 # Project specific
 examples/data
 examples/logs
+logs/
 
