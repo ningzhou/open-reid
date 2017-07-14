@@ -8,7 +8,6 @@ from .market1501 import Market1501
 from .viper import VIPeR
 from .lssurveillance41 import LsSurveillance41
 
-
 __factory = {
     'viper': VIPeR,
     'cuhk01': CUHK01,
